@@ -6,17 +6,20 @@ import os
 import config
 from transformers import AutoTokenizer, AutoModel
 from model_depth import ParsingNet
+import pickle
+from dataclasses import dataclass
+from typing import List
+import json
 
 os.environ["CUDA_VISIBLE_DEVICES"] = str(config.global_gpu_id)
-
 
 def parse_args():
     parser = argparse.ArgumentParser()
     """ config the saved checkpoint """
-    parser.add_argument('--ModelPath', type=str, default='depth_mode/Savings/multi_all_checkpoint.torchsave', help='pre-trained model')
+    parser.add_argument('--model_path', type=str, default='./depth_mode/Savings/multi_all_checkpoint.torchsave', help='path to pre-trained parser')
     base_path = config.tree_infer_mode + "_mode/"
-    parser.add_argument('--batch_size', type=int, default=1, help='Batch size')
-    parser.add_argument('--savepath', type=str, default=base_path + './Savings', help='Model save path')
+    parser.add_argument('--batch_size', type=int, default=512, help='Batch size')
+    parser.add_argument('--data_dir', type=str, default='../data/wikitext103/', help='path to data dir where passages.txt and results of the parser are stored')
     args = parser.parse_args()
     return args
 
@@ -40,15 +43,19 @@ def inference(model, tokenizer, input_sentences, batch_size):
                                                                         ParsingIndex=None, GenerateTree=True, use_pred_segmentation=True)
             all_segmentation_pred.extend(predict_EDU_breaks)
             all_tree_parsing_pred.extend(SPAN_batch)
-    return input_sentences, all_segmentation_pred, all_tree_parsing_pred
 
+    return input_sentences, all_segmentation_pred, all_tree_parsing_pred
 
 if __name__ == '__main__':
 
     args = parse_args()
     model_path = args.ModelPath
     batch_size = args.batch_size
-    save_path = args.savepath
+    data_dir = args.data_dir
+    path_to_texts = os.path.join(data_dir, 'passages.txt')
+    
+    if not os.path.exists(path_to_texts):
+        raise Exception(path_to_texts + " was not found")
 
     """ BERT tokenizer and model """
     bert_tokenizer = AutoTokenizer.from_pretrained("xlm-roberta-base", use_fast=True)
@@ -65,9 +72,19 @@ if __name__ == '__main__':
     model.load_state_dict(torch.load(model_path))
     model = model.eval()
 
-    Test_InputSentences = open("./data/text_for_inference.txt").readlines()
+    Test_InputSentences = open(path_to_texts).readlines()
 
     input_sentences, all_segmentation_pred, all_tree_parsing_pred = inference(model, bert_tokenizer, Test_InputSentences, batch_size)
-    print(input_sentences[0])
-    print(all_segmentation_pred[0])
-    print(all_tree_parsing_pred[0])
+    
+    for seg_pred in all_segmentation_pred:
+        with open(os.path.join(data_dir, 'segmentation.txt'), 'a') as f:
+            f.write(str(seg_pred) + '\n')
+
+    for tree_pred in all_tree_parsing_pred:
+        with open(os.path.join(data_dir, 'tree.txt'), 'a') as f:
+            f.write(str(tree_pred) + '\n')
+
+    for input_sent in input_sentences:
+        with open(os.path.join(data_dir, 'tokenization.txt'), 'a') as f:
+            f.write(str(input_sent) + '\n')
+
