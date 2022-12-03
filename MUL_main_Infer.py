@@ -49,7 +49,7 @@ def inference(model, tokenizer, input_sentences, batch_size):
 if __name__ == '__main__':
 
     args = parse_args()
-    model_path = args.ModelPath
+    model_path = args.model_path
     batch_size = args.batch_size
     data_dir = args.data_dir
     path_to_texts = os.path.join(data_dir, 'passages.txt')
