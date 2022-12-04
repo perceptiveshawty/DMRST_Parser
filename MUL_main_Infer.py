@@ -72,7 +72,7 @@ if __name__ == '__main__':
     model.load_state_dict(torch.load(model_path))
     model = model.eval()
 
-    Test_InputSentences = open(path_to_texts).readlines()[:50000]
+    Test_InputSentences = open(path_to_texts).readlines()[50000:100000]
 
     input_sentences, all_segmentation_pred, all_tree_parsing_pred = inference(model, bert_tokenizer, Test_InputSentences, batch_size)
     
